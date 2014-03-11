@@ -23,6 +23,9 @@
          length/2, maxLength/2, minLength/2, whiteSpace/2,
 				 string/0]).
 
+% FIXME: properly manage bounds
+-define(UNBOUND_NEGINT, -1000).
+-define(UNBOUND_POSINT, 1000).
 -define(UNBOUND_LENGTH, 10).
 -define(UNBOUND_OCCURS, 5).
 -define(BASIC_TYPES, [int, string, date]). % more to be added
@@ -136,6 +139,12 @@ minLength(N, {Tag, Attributes, Content}) ->
 maxLength(N, {Tag, Attributes, Content}) ->
   {Tag, [{maxLength,N} | Attributes], Content}.
 
+minInclusive(N, {Tag, Attributes, Content}) ->
+  {Tag, [{minInclusive,N} | Attributes], Content}.
+
+maxInclusive(N, {Tag, Attributes, Content}) ->
+  {Tag, [{maxInclusive,N} | Attributes], Content}.
+
 whiteSpace(Kind, {Tag, Attributes, Content}) ->
   {Tag, [{whiteSpace,Kind} | Attributes], Content}.
 
@@ -190,6 +199,27 @@ check_occurences(_,_,WSDLType) ->
     erlang:error({conflicting_occurences,WSDLType}).
 
 %% Auxiliary functions for checking WSDL structure (poor mans' typechecker)
+
+% TODO: min/maxExclusive
+check_size({int, Attributes, []} = WSDLType) ->
+    Min = proplists:get_value(minInclusive, Attributes),
+    Max = proplists:get_value(maxInclusive, Attributes),
+    check_length_attributes(undefined, Min, Max, WSDLType).
+
+check_size_attributes(undefined,undefined,undefined,WSDLType) ->
+    minInclusive(?UNBOUND_NEGINT,maxInclusive(?UNBOUND_POSINT,WSDLType));
+check_size_attributes(N,undefined,undefined,WSDLType) when is_integer(N) ->
+    minInclusive(N,maxInclusive(N,WSDLType));
+check_size_attributes(undefined,Min,undefined,WSDLType) when is_integer(Min) ->
+    check_size(maxInclusive(?UNBOUND_POSINT,WSDLType));
+check_size_attributes(undefined,undefined,Max,WSDLType) when is_integer(Max) ->
+    check_size(minInclusive(?UNBOUND_NEGINT, WSDLType));
+check_size_attributes(undefined,Min,Max,WSDLType) when is_integer(Min),
+                                                       is_integer(Max), Min =< Max ->
+    WSDLType;
+check_size_attributes(_,_,_,WSDLType) ->
+    erlang:error({conflicting_lengths,WSDLType}).
+
 check_length({string, Attributes, []} = WSDLType) ->
     N = proplists:get_value(length, Attributes),
     Min = proplists:get_value(minLength, Attributes),
@@ -233,14 +263,16 @@ check_pattern({_Tag, _Attributes, _Content} = WSDLType) ->
 %% Once WSDL structure has been checked coherent, we may generate values for it
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
 generate([]) ->
-  [];
+    [];
 
 generate({empty, _, _}) ->
-  [];
-generate({int, _, []}) ->
-  {int, eqc_gen:int()};
+    [];
+generate({int, Attributes, []}) ->
+    Min = proplists:get_value(minInclusive, Attributes),
+    Max = proplists:get_value(maxInclusive, Attributes),
+    {int, choose(Min, Max)};
 generate({int, _, I}) when is_integer(I) ->
-  {int, I};
+    {int, I};
 generate({string, Attributes, ""}) ->
     Min = proplists:get_value(minLength, Attributes),
     Max = proplists:get_value(maxLength, Attributes),
