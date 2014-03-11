@@ -140,6 +140,10 @@ check_constraints(L) when is_list(L) ->
     [check_constraints(E) || E <- L];
 check_constraints({empty, _, _} = WSDLType) ->
     WSDLType;
+check_constraints({int, _, _} = WSDLType) ->
+    check_int_pattern(check_size(WSDLType));
+check_constraints({char, _, _} = WSDLType) ->
+    WSDLType;
 check_constraints({string, _, ""} = WSDLType) ->
     check_pattern(check_whitespace(check_length(WSDLType)));
 % TODO: check attributes?
@@ -219,16 +223,11 @@ check_whitespace(WSDLType) ->
 %check_whitespace(WSDLType) ->
 %    WSDLType.
 
+% TODO: check, possibly in wsdl_dsl_regexp_gen
 check_pattern({_Tag, _Attributes, _Content} = WSDLType) ->
     WSDLType.
-    %{Tag, [ {pattern, fun(_) -> true end} | Attributes], Content}.
-%check_pattern(#wsdltype{pattern = Pat} = WSDLType) ->
-%  try {ok,MP} = re:compile(Pat),
-%      WSDLType#wsdltype{pattern = fun(X) -> re:run(X,MP) /= nomatch end}
-%  catch
-%    _:_ ->
-%       erlang:error({unrecognized_pattern,Pat})
-%  end.
+check_int_pattern({int, _Attributes, _Content} = WSDLType) ->
+    WSDLType.
 
 %% Once WSDL structure has been checked coherent, we may generate values for it
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
