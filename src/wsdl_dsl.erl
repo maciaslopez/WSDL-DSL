@@ -43,13 +43,13 @@
 %%% Constructors for WSDL 'types' (structures)
 
 empty() ->
-  {empty, [], []}.
+    {empty, [], []}.
 
 xint() ->
-	{int, [], []}.
+    {int, [], []}.
 
 xint(I) when is_integer(I) ->
-	{int, [], I}.
+    {int, [], I}.
 
 xchar() ->
     {char, [], []}.
@@ -57,27 +57,27 @@ xchar(C) when 0 =< C andalso C =< 255 ->
     {char, [], C}.
 
 string() ->
-  {string, [], ""}.
+    {string, [], ""}.
 
 string(S) ->
-  {string, [], S}.
+    {string, [], S}.
 
 % TODO: more datatypes
 %date() ->
-%  {date, [], []}.
+%    {date, [], []}.
 
 sequence(Elements) when is_list(Elements) ->
-  {sequence, [], Elements}.
+    {sequence, [], Elements}.
 
 union(Elements) when is_list(Elements) ->
-  {union, [], Elements}.
+    {union, [], Elements}.
 
 % we may not need to rename list once this is in a separate module (with no QC props)
 xlist({_T, _A, _C} = Element) ->
-  {list, [], Element}.
+    {list, [], Element}.
 
 attributes(Attributes, {Tag, [], Content}) when is_list(Attributes) ->
-  {Tag, Attributes, Content}.
+    {Tag, Attributes, Content}.
 
 tag(Name, Attributes, [H|_] = S) when is_integer(H) ->
     {Name, Attributes, string(S)};
@@ -97,37 +97,37 @@ tag(Name, {_,_,_} = C) ->
     {Name, [], C}.
 
 tag(Name) ->
-  {Name, [], empty()}.
+    {Name, [], empty()}.
 
 %%% Utility functions for WSDL constraints
 
 length(N, {Tag, Attributes, Content}) when is_integer(N) ->
-  %check_length(Attributes), % TODO: check_* in all constructors
-  {Tag, [{length,N} | Attributes], Content}.
+    %check_length(Attributes), % TODO: check_* in all constructors
+    {Tag, [{length,N} | Attributes], Content}.
 
 minLength(N, {Tag, Attributes, Content}) ->
-  {Tag, [{minLength,N} | Attributes], Content}.
+    {Tag, [{minLength,N} | Attributes], Content}.
 
 maxLength(N, {Tag, Attributes, Content}) ->
-  {Tag, [{maxLength,N} | Attributes], Content}.
+    {Tag, [{maxLength,N} | Attributes], Content}.
 
 minInclusive(N, {Tag, Attributes, Content}) ->
-  {Tag, [{minInclusive,N} | Attributes], Content}.
+    {Tag, [{minInclusive,N} | Attributes], Content}.
 
 maxInclusive(N, {Tag, Attributes, Content}) ->
-  {Tag, [{maxInclusive,N} | Attributes], Content}.
+    {Tag, [{maxInclusive,N} | Attributes], Content}.
 
 whiteSpace(Kind, {Tag, Attributes, Content}) ->
-  {Tag, [{whiteSpace,Kind} | Attributes], Content}.
+    {Tag, [{whiteSpace,Kind} | Attributes], Content}.
 
 pattern(RegExp, {Tag, Attributes, Content}) ->
-  {Tag, [{pattern,RegExp} | Attributes], Content}.
+    {Tag, [{pattern,RegExp} | Attributes], Content}.
 
 minOccurs(N, {Tag, Attributes, Content}) ->
-  {Tag, [{minOccurs,N} | Attributes], Content}.
+    {Tag, [{minOccurs,N} | Attributes], Content}.
 
 maxOccurs(N, {Tag, Attributes, Content}) ->
-  {Tag, [{maxOccurs,N} | Attributes], Content}.
+    {Tag, [{maxOccurs,N} | Attributes], Content}.
 
 %%% Main WSDL constructor: ought to be called once, as external wrapper
 wsdlType(WSDLType) ->
@@ -137,35 +137,35 @@ wsdlType(WSDLType) ->
 %%% Internal stuff: checking WSDL structure coherence
 
 check_constraints(L) when is_list(L) ->
-  [check_constraints(E) || E <- L];
+    [check_constraints(E) || E <- L];
 check_constraints({empty, _, _} = WSDLType) ->
-  WSDLType;
+    WSDLType;
 check_constraints({string, _, ""} = WSDLType) ->
-  check_pattern(check_whitespace(check_length(WSDLType)));
+    check_pattern(check_whitespace(check_length(WSDLType)));
 % TODO: check attributes?
 check_constraints({string, _, _} = WSDLType) ->
-  WSDLType;
+    WSDLType;
 check_constraints({Tag, Attributes, Content}) ->
-	F = fun({K,V}) when is_tuple(V) ->
-							{K, check_constraints(V)};
-				 (Else) ->
-							Else
-			end,
-	Min = proplists:get_value(minOccurs, Attributes),
-	Max = proplists:get_value(maxOccurs, Attributes),
+    F = fun({K,V}) when is_tuple(V) ->
+                            {K, check_constraints(V)};
+                        (Else) ->
+                            Else
+        end,
+    Min = proplists:get_value(minOccurs, Attributes),
+    Max = proplists:get_value(maxOccurs, Attributes),
     check_occurences(Min, Max,
                      {Tag, [ F(A) || A <- Attributes], check_constraints(Content)}).
 
 check_occurences(undefined,undefined,{list,_,_}=WSDLType) ->
-		minOccurs(0,maxOccurs(?UNBOUND_OCCURS, WSDLType));
+    minOccurs(0,maxOccurs(?UNBOUND_OCCURS, WSDLType));
 check_occurences(undefined,undefined,WSDLType) ->
-		minOccurs(1,maxOccurs(1, WSDLType));
+    minOccurs(1,maxOccurs(1, WSDLType));
 check_occurences(Min,undefined,WSDLType) when is_integer(Min) ->
     minOccurs(Min,maxOccurs(?UNBOUND_OCCURS,WSDLType));
 check_occurences(undefined,Max,WSDLType) when is_integer(Max) ->
     minOccurs(0,maxOccurs(Max,WSDLType));
 check_occurences(Min,Max,WSDLType) when is_integer(Min),
-																				is_integer(Max), Min =< Max ->
+                                        is_integer(Max), Min =< Max ->
     WSDLType;
 check_occurences(_,_,WSDLType) ->
     erlang:error({conflicting_occurences,WSDLType}).
@@ -207,17 +207,17 @@ check_length_attributes(undefined,Min,undefined,WSDLType) when is_integer(Min) -
 check_length_attributes(undefined,undefined,Max,WSDLType) when is_integer(Max) ->
     check_length(minLength(0, WSDLType));
 check_length_attributes(undefined,Min,Max,WSDLType) when is_integer(Min),
-							 is_integer(Max), Min =< Max ->
+                                                         is_integer(Max), Min =< Max ->
     WSDLType;
 check_length_attributes(_,_,_,WSDLType) ->
     erlang:error({conflicting_lengths,WSDLType}).
 
 check_whitespace(WSDLType) ->
-  WSDLType.
+    WSDLType.
 %check_whitespace(#wsdltype{constructor = base, type = string, whiteSpace = undefined} = WSDLType) ->
-%  WSDLType#wsdltype{whiteSpace = preserve};
+%    WSDLType#wsdltype{whiteSpace = preserve};
 %check_whitespace(WSDLType) ->
-%  WSDLType.
+%    WSDLType.
 
 check_pattern({_Tag, _Attributes, _Content} = WSDLType) ->
     WSDLType.
@@ -230,8 +230,6 @@ check_pattern({_Tag, _Attributes, _Content} = WSDLType) ->
 %       erlang:error({unrecognized_pattern,Pat})
 %  end.
 
-
-       
 %% Once WSDL structure has been checked coherent, we may generate values for it
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
 generate([]) ->
@@ -284,16 +282,16 @@ generate_gen({union, [], Content}) ->
     oneof([ generate(C) || C <- Content]);
 % TODO: fix list (?MAX_BOUND..)
 generate_gen({list, [], Content}) ->
-	generate(Content);
+    generate(Content);
 generate_gen({Tag, Attrs, Content}) ->
-   % Base cases need to be wrapped in a list
+    % Base cases need to be wrapped in a list
     C = case Content of
             {int,_,_}    -> [generate(Content)];
             {string,_,_} -> [generate(Content)];
             {regexp, _} -> [generate(Content)];
             _            ->  generate(Content)
         end,
-	{Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
+    {Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
 
 %% Last step of generation, expand restriction attributes such as minOccuexrs, maxOccurs
 expand_constraints(Attributes) ->
@@ -304,18 +302,18 @@ expand_constraints(Attributes) ->
 %% Auxiliary generators
 ascii_char() ->
     ?SHRINK(frequency([ {1,elements(lists:seq(33,33)++
-                                        lists:seq(35,37)++
-                                        lists:seq(39,47)++
-                                        lists:seq(58,59)++
-                                        lists:seq(61,61)++
-                                        lists:seq(63,64)++
-                                        lists:seq(91,96)++                             %% ++ WARNING!! we have removed a lot of
-                                        lists:seq(123,126))}                           %% symbols because XMERL SUCKS -> try erlsom!!
-                                                % WARNING!!, {1,elements([32,9,10])}            %% whitespaces and tabs (same as above)
-                        , {1,elements([32])}                 %% (only whitespace) XMERL SUCKS!!
-                        , {1,choose(48,57)}                  %% digits
-                        , {1,choose(65,90)}                  %% uppercase
-                        , {2,choose(97,122)}                 %% lowercase
+                                    lists:seq(35,37)++
+                                    lists:seq(39,47)++
+                                    lists:seq(58,59)++
+                                    lists:seq(61,61)++
+                                    lists:seq(63,64)++
+                                    lists:seq(91,96)++   %% ++ WARNING!! we have removed a lot of
+                                    lists:seq(123,126))} %% symbols because XMERL SUCKS -> try erlsom!!
+             % WARNING!!, {1,elements([32,9,10])}        %% whitespaces and tabs (same as above)
+                        , {1,elements([32])}             %% (only whitespace) XMERL SUCKS!!
+                        , {1,choose(48,57)}              %% digits
+                        , {1,choose(65,90)}              %% uppercase
+                        , {2,choose(97,122)}             %% lowercase
                       ]),
             [$a]).
 
@@ -326,81 +324,81 @@ escaped_string(Gen) ->
 
 %% Auxiliary utility functions
 non_whitespace(G,WS)
-  when WS==replace orelse WS==collapse -> %% 
-  ?SUCHTHAT(C,G,not lists:member(C,[16#20,16#09,16#0A,16#0D]));
+    when WS==replace orelse WS==collapse -> %%
+    ?SUCHTHAT(C,G,not lists:member(C,[16#20,16#09,16#0A,16#0D]));
 non_whitespace(G,_WS) ->
-  G.
+    G.
 
 non_tabcrlf(G,WS) when WS==replace orelse WS==collapse ->
-  ?SUCHTHAT(C,G,not lists:member(C,[16#09,16#0A,16#0D]));
+    ?SUCHTHAT(C,G,not lists:member(C,[16#09,16#0A,16#0D]));
 non_tabcrlf(G,_WS) ->
-  G.
+    G.
 
 no_dupl_spaces([32,32|_]) ->
-  false;
+    false;
 no_dupl_spaces([_|Cs]) ->
-  no_dupl_spaces(Cs);
+    no_dupl_spaces(Cs);
 no_dupl_spaces([]) ->
-  true.
+    true.
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 
 prop_whitespace() ->
-  ?FORALL(String,
-	  wsdlType(tag("Nombre", whiteSpace(collapse,minLength(1,maxLength(13,string()))))),
-	  collect(String, length(String) =< 13 andalso hd(String) /= 32 andalso lists:last(String) /= 32 andalso
-		  no_dupl_spaces(String))).
+    ?FORALL(String,
+        wsdlType(tag("Nombre", whiteSpace(collapse,minLength(1,maxLength(13,string()))))),
+        collect(String, length(String) =< 13 andalso hd(String) /= 32 andalso lists:last(String) /= 32 andalso
+                        no_dupl_spaces(String))).
 
 prop_regexp() ->
     ?FORALL(RegExp, regexp(),
-	    ?FORALL(String,
-		    wsdlType(tag("Nombre", pattern(RegExp,minLength(1,maxLength(13,string()))))),
-		    collect(String,
-			    length(String) =< 13
-			    andalso re:run(String,RegExp) /= nomatch))).
+            ?FORALL(String,
+                    wsdlType(tag("Nombre", pattern(RegExp,minLength(1,maxLength(13,string()))))),
+                    collect(String,
+                            length(String) =< 13
+                            andalso re:run(String,RegExp) /= nomatch))).
+
+regexp() ->
+    "[a-z]*".
+
 
 prop_attributes() ->
     ?FORALL(WSDLType,
-	    %wsdlType(attributes(list({name(),minLength(8,string())}),
-      %                          tag("Name"))),
-      wsdlType(tag("Name", list({name(),minLength(8,string())}))),
-	    lists:all(fun(X) -> tuple_size(X)==2 end, element(2, WSDLType))).
-
-regexp() ->
-  "[a-z]*".
+            %wsdlType(attributes(list({name(),minLength(8,string())}),
+            %                    tag("Name"))),
+            wsdlType(tag("Name", list({name(),minLength(8,string())}))),
+            lists:all(fun(X) -> tuple_size(X)==2 end, element(2, WSDLType))).
 
 name() ->
-  non_empty(list(choose($a, $z))).
+    non_empty(list(choose($a, $z))).
 
 non_duplicates_list(G) ->
-		?SIZED(N, utuple(N,G)).
+    ?SIZED(N, utuple(N,G)).
 
 utuple(0,_G) ->
-		[];
+    [];
 utuple(N,G) ->
-		?LET(List,utuple(N-1,G),
-				 ?LET(Tuple, ?SUCHTHAT({Tag,_Body}, G, not lists:keymember(Tag,1,List)),
-							[Tuple|List])).
+    ?LET(List,utuple(N-1,G),
+         ?LET(Tuple, ?SUCHTHAT({Tag,_Body}, G, not lists:keymember(Tag,1,List)),
+              [Tuple|List])).
 
 
 canonize(WSDLValue) when is_list(WSDLValue) ->
-		join(lists:flatten([canonize(E) || E <- WSDLValue]));
+    join(lists:flatten([canonize(E) || E <- WSDLValue]));
 canonize({Tag, Attr, Value}) ->
-		{Tag, Attr, canonize(Value)};
+    {Tag, Attr, canonize(Value)};
 canonize({int, Value}) ->
-		{string, integer_to_list(Value)};
+    {string, integer_to_list(Value)};
 canonize({string, []}) ->
-		[];
+    [];
 canonize({string, Value}) ->
-		{string, Value}.
+    {string, Value}.
 
 join([{string,A},{string,B}|T]) ->
-		join([{string, A ++ " " ++ B} | T]);
+    join([{string, A ++ " " ++ B} | T]);
 join([H|T]) ->
-		[H|join(T)];
+    [H|join(T)];
 join([]) ->
-		[].
-
+    [].
 
 % <outerName name1="xxxxxxxx"
 %            name2="yyyyyyyy"
@@ -414,8 +412,8 @@ join([]) ->
 %  []}
 sample1() ->
     ?LET(Attributes, non_duplicates_list({name(),length(8,string())}),
-%				 wsdlType(attributes(Attributes,tag("outerName")))).
-				 wsdlType(tag("outerName", Attributes))).
+         %wsdlType(attributes(Attributes,tag("outerName")))).
+         wsdlType(tag("outerName", Attributes))).
 
 % <roomId>IDofARoom</roomId>
 sample2() ->
@@ -448,19 +446,16 @@ sample5() ->
                                     minOccurs(0,maxOccurs(1,tag("description", string())))])))).
 
 sample6() ->
-    wsdlType(minOccurs(0, maxOccurs(1, tag("room", pattern(regexp_gen:concat([$a,$b]), string()))))).
+    wsdlType(minOccurs(0, maxOccurs(1, tag("room", pattern(wsdl_dsl_regexp_gen:concat([$a,$b]), string()))))).
 
 prop_samples() ->
-    conjunction([ {Tag,
-                   ?FORALL(WSDL, G, equals(wsdl_dsl_pp:dexmlize(wsdl_dsl_pp:xmlize(WSDL)),
-                                           canonize(WSDL)))} ||
-                    {Tag, G} <- [
-                                 {sample1, sample1()},
-                                 {sample2, sample2()},
-                                 {sample3, sample3()},
-                                 {sample4, sample4()},
-                                 {sample5, sample5()}
-                                ]] ).
+    conjunction([{Tag, ?FORALL(WSDL, G, equals(wsdl_dsl_pp:dexmlize(wsdl_dsl_pp:xmlize(WSDL)),
+                                               canonize(WSDL)))} ||
+                 {Tag, G} <- [{sample1, sample1()},
+                              {sample2, sample2()},
+                              {sample3, sample3()},
+                              {sample4, sample4()},
+                              {sample5, sample5()}]]).
 
 %<rooms atr="NN">
 % <room atr="MM">
