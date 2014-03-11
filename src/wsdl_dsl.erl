@@ -62,34 +62,6 @@ string() ->
 string(S) ->
   {string, [], S}.
 
-star({string, Attr, S}) ->
-    {regexp, [{minOccurs,0}|Attr], S};
-star({regexp, Attr, S}) ->
-  {regexp, [{minOccurs,0}|Attr], S}.
-
-ascii() ->
-  lists:seq(1,255).
-    
-charGroup(pos,CharGroup) ->
-  CharGroup;
-charGroup(neg,{regexp_chargroup, [], S}) ->
-  {regexp_chargroup, [], ascii() -- S}.
-
-combine(CharGroupList) when is_list(CharGroupList) ->
-    {regexp_chargroup, [], group_union([CharGroup || {regexp_chargroup, [], CharGroup} <- CharGroupList])}.
-
-group_union(Ls) ->
-    sets:to_list(sets:union([sets:from_list(L) || L <- Ls])).
-
-re_char(C) when 0 =< C andalso C =< 255 ->  
-  {regexp_chargroup, [], [C]}.
-range(C1, C2) when C1 =< C2 ->
-  {regexp_chargroup, [], lists:seq(C1-5,C2)};
-range(_C1, _C2) ->
-  {regexp_chargroup, [], []}.
-
-    
-
 % TODO: more datatypes
 %date() ->
 %  {date, [], []}.
@@ -300,10 +272,6 @@ generate({string, _, S}) ->
     {string, S};
 generate({regexp, RegExp}) ->
     regexp_gen:generate(RegExp);
-generate({regexp_chargroup, [], S}) ->
-    elements(S);
-
-
 generate({Tag, Attributes, Content}) ->
     {Min, Max, Attrs} = expand_constraints(Attributes),
     V = generate_gen({Tag, Attrs, Content}),
@@ -397,32 +365,6 @@ prop_attributes() ->
       %                          tag("Name"))),
       wsdlType(tag("Name", list({name(),minLength(8,string())}))),
 	    lists:all(fun(X) -> tuple_size(X)==2 end, element(2, WSDLType))).
-
-prop_regexp1() ->
-    ?FORALL(CharGroup, charGroupGen(),
-            ?FORALL(Values, list(generate(eval(CharGroup))),
-                    lists:usort(Values) -- element(3, eval(CharGroup)) == [])).
-
-charGroupGen() ->
-    ?SIZED(S, charGroupGen(S)).
-charGroupGen(0) ->
-    oneof([{call, ?MODULE, re_char, [char()]},
-           ?LET({C,N}, {char(), nat()},
-                ?SHRINK({call, ?MODULE, range, [C, min(C+N,255)]},
-                        [{call, ?MODULE, re_char, [C]}]))]);
-charGroupGen(S) ->
-    ?LAZY(oneof([charGroupGen(0),
-                 ?LETSHRINK(Groups, non_empty(list(charGroupGen(S div 3))),
-                            {call, ?MODULE, combine, [Groups]}),
-                 ?LET(Group, charGroupGen(S-1),
-                      case Group of
-                        {call, _, charGroup, [neg, Group1]} ->
-                          ?SHRINK({call, ?MODULE, charGroup, [neg, Group]},
-                              [Group, Group1]);
-                        _ ->
-                          ?SHRINK({call, ?MODULE, charGroup, [neg, Group]},
-                                  [Group])
-                      end)])).
 
 regexp() ->
   "[a-z]*".
