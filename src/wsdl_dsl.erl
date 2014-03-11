@@ -253,9 +253,7 @@ generate({string, Attributes, ""}) ->
               ?LET(N, choose(Min,Max),
                    {string, case Pat/=undefined of
                                 true ->
-                                   % ?LET(S, generate(regexp_gen:regexp(regexp_gen:repeat(N, Pat))), 
-                                   %        lists:flatten(S));
-                                    ?LET(S, generate(regexp_gen:regexp(Pat)), lists:flatten(S));
+                                    ?LET(S, regexp_gen:generate(Pat), lists:flatten(S));
                                 _ ->
                                     escaped_string(
                                       if N<3  -> vector(N,non_whitespace(Gen,WS));
@@ -446,7 +444,7 @@ sample5() ->
                                     minOccurs(0,maxOccurs(1,tag("description", string())))])))).
 
 sample6() ->
-    wsdlType(minOccurs(0, maxOccurs(1, tag("room", pattern(wsdl_dsl_regexp_gen:concat([$a,$b]), string()))))).
+    wsdlType(minOccurs(0, maxOccurs(1, tag("room", pattern(regexp_gen:concat([$a,$b]), string()))))).
 
 prop_samples() ->
     conjunction([{Tag, ?FORALL(WSDL, G, equals(wsdl_dsl_pp:dexmlize(wsdl_dsl_pp:xmlize(WSDL)),
