@@ -236,10 +236,24 @@ generate([]) ->
 
 generate({empty, _, _}) ->
     [];
+% FIXME: how to match patterns with other attribures
 generate({int, Attributes, []}) ->
     Min = proplists:get_value(minInclusive, Attributes),
     Max = proplists:get_value(maxInclusive, Attributes),
-    {int, choose(Min, Max)};
+    Pat = proplists:get_value(pattern, Attributes),
+    N = case Pat /= undefined of
+            true ->
+                ?LET(S, wsdl_dsl_regexp_gen:generate(Pat),
+                     try list_to_integer(lists:flatten(S))
+                     catch
+                         error:badarg ->
+                             erlang:error("Pattern is not an integer", Pat)
+                     end);
+            _ ->
+                choose(Min, Max)
+        end,
+    {int, N};
+% TODO: Attributes == []?
 generate({int, _, I}) when is_integer(I) ->
     {int, I};
 generate({string, Attributes, ""}) ->
