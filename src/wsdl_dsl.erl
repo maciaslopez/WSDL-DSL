@@ -355,7 +355,7 @@ prop_regexp() ->
                             andalso re:run(String,RegExp) /= nomatch))).
 
 regexp() ->
-    "[a-z]*".
+    regexp_gen:from_string("[a-z]*").
 
 
 prop_attributes() ->
@@ -443,7 +443,8 @@ sample5() ->
                                     minOccurs(0,maxOccurs(1,tag("description", string())))])))).
 
 sample6() ->
-    wsdlType(minOccurs(0, maxOccurs(1, tag("room", pattern(regexp_gen:concat([$a,$b]), string()))))).
+    wsdlType(minOccurs(0, maxOccurs(1, tag("room",
+                                           pattern(regexp_gen:regexp(regexp_gen:concat([$a,$b])), string()))))).
 
 prop_samples() ->
     conjunction([{Tag, ?FORALL(WSDL, G, equals(wsdl_dsl_pp:dexmlize(wsdl_dsl_pp:xmlize(WSDL)),
