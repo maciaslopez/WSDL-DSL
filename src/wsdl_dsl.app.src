@@ -1,0 +1,12 @@
+{application, wsdl_dsl,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { wsdl_dsl_app, []}},
+  {env, []}
+ ]}.
