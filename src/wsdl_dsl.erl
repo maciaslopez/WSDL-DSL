@@ -1,4 +1,4 @@
-%%% @author Thomas Arts, Laura Castro
+%%% @author Thomas Arts, Laura Castro, Macías López, Henrique Ferreiro
 %%% @copyright (C) 2013 Prowess
 %%% @doc
 %%% From http://www.w3schools.com/schema/schema_dtypes_string.asp
@@ -149,6 +149,8 @@ check_constraints({string, _, ""} = WSDLType) ->
 % TODO: check attributes?
 check_constraints({string, _, _} = WSDLType) ->
     WSDLType;
+check_constraints({regexp, _, _} = WSDLType) ->
+    WSDLType;
 check_constraints({Tag, Attributes, Content}) ->
     F = fun({K,V}) when is_tuple(V) ->
                             {K, check_constraints(V)};
@@ -279,7 +281,7 @@ generate({string, Attributes, ""}) ->
               (WS/=collapse orelse no_dupl_spaces(String)));
 generate({string, _, S}) ->
     {string, S};
-generate({regexp, RegExp}) ->
+generate({regexp, RegExp, _}) ->
     regexp_gen:generate(RegExp);
 generate({Tag, Attributes, Content}) ->
     {Min, Max, Attrs} = expand_constraints(Attributes),

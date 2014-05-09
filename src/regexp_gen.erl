@@ -40,7 +40,7 @@ ascii_char_gen() ->
 
 
 regexp(Pat) ->
-    {regexp, Pat}.
+    {regexp, Pat, ""}.
 
 %% main function to build a regexp from a string
 %% FIXME: we should check for incompatibilities
@@ -49,12 +49,13 @@ from_string(Pat) ->
 
 convert(Pattern) ->
     Pat = preprocess_pat(Pattern),
-    case reg_exp:parse(Pat) of
-        {ok, ParseRes} ->
-            convert1(ParseRes);
+    case re:compile(Pat) of
+        {ok, _} ->
+            Pat;
         {error, Reason} ->
             erlang:error({wrong_regexp,Pattern,Reason})
      end.
+
 
 % TODO: needed?
 preprocess_pat(Pat) ->
