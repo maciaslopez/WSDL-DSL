@@ -9,9 +9,10 @@
 -compile(export_all).
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(BASIC_TYPES, [int, string, date]). % more to be added
+-define(BASIC_TYPES, [bool, int, string, date]). % more to be added
 
-%% AST :: Int | String | {Tag, Attributes, [AST]}
+%% AST :: Bool | Int | String | {Tag, Attributes, [AST]}
+%% Bool :: {bool, boolean()}
 %% Int :: {int, int()}
 %% String :: {string, string()}
 %% Tag :: string() 
@@ -25,10 +26,12 @@ xmlize({Tag, Attrs, C}) ->
     open_tag(Tag, Attrs) ++
 		lists:concat(xmlize(lists:flatten(C))) ++
     close_tag(Tag);
+xmlize({bool, Value}) ->
+    atom_to_list(Value);
 xmlize({int, Value}) ->
-		integer_to_list(Value);
+    integer_to_list(Value);
 xmlize({string, Value}) ->
-		Value;
+    Value;
 xmlize(Any) ->
     Any.
 

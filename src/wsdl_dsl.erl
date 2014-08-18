@@ -28,10 +28,11 @@
 -define(UNBOUND_POSINT, 1000).
 -define(UNBOUND_LENGTH, 10).
 -define(UNBOUND_OCCURS, 5).
--define(BASIC_TYPES, [int, string, date]). % more to be added
+-define(BASIC_TYPES, [bool, int, string, date]). % more to be added
 
-%% AST :: Empty | Int | String | Sequence | Union | List | {Tag, Attributes, AST}
+%% AST :: Empty | Bool | Int | String | Sequence | Union | List | {Tag, Attributes, AST}
 %% Empty :: {empty, [], []}
+%% Bool :: {bool, [], boolean()|[]}
 %% Int :: {int, [], int()|[]}
 %% String :: {string, Attributes, string()}
 %% Sequence :: {sequence, Attributes, [AST]}
@@ -44,6 +45,17 @@
 
 empty() ->
     {empty, [], []}.
+
+% TODO: implement whitespace and pattern support
+xbool() ->
+    {bool, [], []}.
+
+xbool(0) ->
+    xbool(false);
+xbool(1) ->
+    xbool(true);
+xbool(B) when B == true orelse B == false ->
+    {bool, [], B}.
 
 xint() ->
     {int, [], []}.
@@ -139,6 +151,8 @@ wsdlType(WSDLType) ->
 check_constraints(L) when is_list(L) ->
     [check_constraints(E) || E <- L];
 check_constraints({empty, _, _} = WSDLType) ->
+    WSDLType;
+check_constraints({bool, _, _} = WSDLType) ->
     WSDLType;
 check_constraints({int, _, _} = WSDLType) ->
     check_int_pattern(check_size(WSDLType));
@@ -238,6 +252,10 @@ generate([]) ->
 
 generate({empty, _, _}) ->
     [];
+generate({bool, _, []}) ->
+    {bool, oneof([true, false])};
+generate({bool, _, B}) when B == true orelse B == false ->
+    {bool, B};
 % FIXME: how to match patterns with other attribures
 generate({int, Attributes, []}) ->
     Min = proplists:get_value(minInclusive, Attributes),
@@ -299,9 +317,10 @@ generate_gen({list, [], Content}) ->
 generate_gen({Tag, Attrs, Content}) ->
     % Base cases need to be wrapped in a list
     C = case Content of
+            {bool,_,_}   -> [generate(Content)];
             {int,_,_}    -> [generate(Content)];
             {string,_,_} -> [generate(Content)];
-            {regexp, _} -> [generate(Content)];
+            {regexp, _}  -> [generate(Content)];
             _            ->  generate(Content)
         end,
     {Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
@@ -399,6 +418,8 @@ canonize(WSDLValue) when is_list(WSDLValue) ->
     join(lists:flatten([canonize(E) || E <- WSDLValue]));
 canonize({Tag, Attr, Value}) ->
     {Tag, Attr, canonize(Value)};
+canonize({bool, Value}) ->
+    {string, atom_to_list(Value)};
 canonize({int, Value}) ->
     {string, integer_to_list(Value)};
 canonize({string, []}) ->
