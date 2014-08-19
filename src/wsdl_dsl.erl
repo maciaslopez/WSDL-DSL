@@ -180,6 +180,8 @@ check_occurences(undefined,undefined,{list,_,_}=WSDLType) ->
     minOccurs(0,maxOccurs(?UNBOUND_OCCURS, WSDLType));
 check_occurences(undefined,undefined,WSDLType) ->
     minOccurs(1,maxOccurs(1, WSDLType));
+check_occurences(Min,unbound,WSDLType) when is_integer(Min) ->
+    minOccurs(Min,maxOccurs(?UNBOUND_OCCURS,WSDLType));
 check_occurences(Min,undefined,WSDLType) when is_integer(Min) ->
     minOccurs(Min,maxOccurs(?UNBOUND_OCCURS,WSDLType));
 check_occurences(undefined,Max,WSDLType) when is_integer(Max) ->
