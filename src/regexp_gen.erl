@@ -39,19 +39,24 @@ ascii_char_gen() ->
             [$a]).
 
 
-regexp(Pat) ->
-    {regexp, Pat, ""}.
-
 %% main function to build a regexp from a string
 %% FIXME: we should check for incompatibilities
 from_string(Pat) ->
     regexp(convert(Pat)).
 
+% TODO
+check_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
+% TODO
+check_int_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
 convert(Pattern) ->
     Pat = preprocess_pat(Pattern),
-    case re:compile(Pat) of
-        {ok, _} ->
-            Pat;
+    case erlang_regexp:parse(Pat) of
+        {ok, ParseRes} ->
+            convert1(ParseRes);
         {error, Reason} ->
             erlang:error({wrong_regexp,Pattern,Reason})
      end.
@@ -86,6 +91,12 @@ convert1({optional,E1}) ->
     question(convert1(E1));
 convert1({repeat, N, E}) ->
     repeat(N, convert1(E)).
+
+
+%%
+
+regexp(Pat) ->
+    {regexp, Pat}.
 
 %% L :: list of regexps to concat
 %% Regexp: ab -> concat([$a,$b]).

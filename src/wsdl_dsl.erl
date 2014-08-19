@@ -163,8 +163,6 @@ check_constraints({string, _, ""} = WSDLType) ->
 % TODO: check attributes?
 check_constraints({string, _, _} = WSDLType) ->
     WSDLType;
-check_constraints({regexp, _, _} = WSDLType) ->
-    WSDLType;
 check_constraints({Tag, Attributes, Content}) ->
     F = fun({K,V}) when is_tuple(V) ->
                             {K, check_constraints(V)};
@@ -241,11 +239,13 @@ check_whitespace(WSDLType) ->
 %check_whitespace(WSDLType) ->
 %    WSDLType.
 
-% TODO: check, possibly in wsdl_dsl_regexp_gen
-check_pattern({_Tag, _Attributes, _Content} = WSDLType) ->
-    WSDLType.
-check_int_pattern({int, _Attributes, _Content} = WSDLType) ->
-    WSDLType.
+check_pattern({_Tag, Attributes, _Content} = WSDLType) ->
+    Pat = proplists:get_value(pattern, Attributes),
+    regexp_gen:check_pattern(Pat, WSDLType).
+
+check_int_pattern({int, Attributes, _Content} = WSDLType) ->
+    Pat = proplists:get_value(pattern, Attributes),
+    regexp_gen:check_int_pattern(Pat, WSDLType).
 
 %% Once WSDL structure has been checked coherent, we may generate values for it
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
@@ -265,7 +265,7 @@ generate({int, Attributes, []}) ->
     Pat = proplists:get_value(pattern, Attributes),
     N = case Pat /= undefined of
             true ->
-                ?LET(S, wsdl_dsl_regexp_gen:generate(Pat),
+                ?LET(S, regexp_gen:generate(Pat),
                      try list_to_integer(lists:flatten(S))
                      catch
                          error:badarg ->
@@ -301,8 +301,6 @@ generate({string, Attributes, ""}) ->
               (WS/=collapse orelse no_dupl_spaces(String)));
 generate({string, _, S}) ->
     {string, S};
-generate({regexp, RegExp, _}) ->
-    regexp_gen:generate(RegExp);
 generate({Tag, Attributes, Content}) ->
     {Min, Max, Attrs} = expand_constraints(Attributes),
     V = generate_gen({Tag, Attrs, Content}),
@@ -322,7 +320,6 @@ generate_gen({Tag, Attrs, Content}) ->
             {bool,_,_}   -> [generate(Content)];
             {int,_,_}    -> [generate(Content)];
             {string,_,_} -> [generate(Content)];
-            {regexp, _}  -> [generate(Content)];
             _            ->  generate(Content)
         end,
     {Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
