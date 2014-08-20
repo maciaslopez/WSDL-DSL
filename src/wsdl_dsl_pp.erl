@@ -9,11 +9,12 @@
 -compile(export_all).
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(BASIC_TYPES, [bool, int, string, date]). % more to be added
+-define(BASIC_TYPES, [bool, int, decimal, string, date]). % more to be added
 
 %% AST :: Bool | Int | String | {Tag, Attributes, [AST]}
 %% Bool :: {bool, boolean()}
 %% Int :: {int, int()}
+%% Decimal :: {decimal, float()}
 %% String :: {string, string()}
 %% Tag :: string() 
 %% Attributes :: [{string(), string()}]
@@ -30,6 +31,8 @@ xmlize({bool, Value}) ->
     atom_to_list(Value);
 xmlize({int, Value}) ->
     integer_to_list(Value);
+xmlize({decimal, Value}) ->
+    float_to_list(Value);
 xmlize({string, Value}) ->
     Value;
 xmlize(Any) ->

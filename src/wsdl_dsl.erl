@@ -28,12 +28,13 @@
 -define(UNBOUND_POSINT, 1000).
 -define(UNBOUND_LENGTH, 10).
 -define(UNBOUND_OCCURS, 5).
--define(BASIC_TYPES, [bool, int, string, date]). % more to be added
+-define(BASIC_TYPES, [bool, int, decimal, string, date]). % more to be added
 
-%% AST :: Empty | Bool | Int | String | Sequence | Union | List | {Tag, Attributes, AST}
+%% AST :: Empty | Bool | Int | Decimal | String | Sequence | Union | List | {Tag, Attributes, AST}
 %% Empty :: {empty, [], []}
 %% Bool :: {bool, [], boolean()|[]}
 %% Int :: {int, [], int()|[]}
+%% Decimal :: {decimal, [], float()|[]}
 %% String :: {string, Attributes, string()}
 %% Sequence :: {sequence, Attributes, [AST]}
 %% Union:: {union, Attributes, [AST]}
@@ -62,6 +63,12 @@ xint() ->
 
 xint(I) when is_integer(I) ->
     {int, [], I}.
+
+xdecimal() ->
+    {decimal, [], []}.
+
+xdecimal(D) when is_float(D) ->
+    {decimal, [], D}.
 
 xchar() ->
     {char, [], []}.
@@ -156,6 +163,8 @@ check_constraints({bool, _, _} = WSDLType) ->
     WSDLType;
 check_constraints({int, _, _} = WSDLType) ->
     check_int_pattern(check_size(WSDLType));
+check_constraints({decimal, _, _} = WSDLType) ->
+    check_decimal_pattern(check_size(WSDLType));
 check_constraints({char, _, _} = WSDLType) ->
     WSDLType;
 check_constraints({string, _, ""} = WSDLType) ->
@@ -194,6 +203,11 @@ check_occurences(_,_,WSDLType) ->
 
 % TODO: min/maxExclusive
 check_size({int, Attributes, []} = WSDLType) ->
+    Min = proplists:get_value(minInclusive, Attributes),
+    Max = proplists:get_value(maxInclusive, Attributes),
+    check_length_attributes(undefined, Min, Max, WSDLType);
+% TODO: allow decimal bounds
+check_size({decimal, Attributes, []} = WSDLType) ->
     Min = proplists:get_value(minInclusive, Attributes),
     Max = proplists:get_value(maxInclusive, Attributes),
     check_length_attributes(undefined, Min, Max, WSDLType).
@@ -247,6 +261,10 @@ check_int_pattern({int, Attributes, _Content} = WSDLType) ->
     Pat = proplists:get_value(pattern, Attributes),
     regexp_gen:check_int_pattern(Pat, WSDLType).
 
+check_decimal_pattern({decimal, Attributes, _Content} = WSDLType) ->
+    Pat = proplists:get_value(pattern, Attributes),
+    regexp_gen:check_decimal_pattern(Pat, WSDLType).
+
 %% Once WSDL structure has been checked coherent, we may generate values for it
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
 generate([]) ->
@@ -278,6 +296,12 @@ generate({int, Attributes, []}) ->
 % TODO: Attributes == []?
 generate({int, _, I}) when is_integer(I) ->
     {int, I};
+% TODO: attributes
+generate({decimal, _Attributes, []}) ->
+    N = real(),
+    {decimal, N};
+generate({decimal, _, D}) when is_float(D) ->
+    {decimal, D};
 generate({string, Attributes, ""}) ->
     Min = proplists:get_value(minLength, Attributes),
     Max = proplists:get_value(maxLength, Attributes),
@@ -317,10 +341,11 @@ generate_gen({list, [], Content}) ->
 generate_gen({Tag, Attrs, Content}) ->
     % Base cases need to be wrapped in a list
     C = case Content of
-            {bool,_,_}   -> [generate(Content)];
-            {int,_,_}    -> [generate(Content)];
-            {string,_,_} -> [generate(Content)];
-            _            ->  generate(Content)
+            {bool,_,_}    -> [generate(Content)];
+            {int,_,_}     -> [generate(Content)];
+            {decimal,_,_} -> [generate(Content)];
+            {string,_,_}  -> [generate(Content)];
+            _             ->  generate(Content)
         end,
     {Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
 
@@ -421,6 +446,8 @@ canonize({bool, Value}) ->
     {string, atom_to_list(Value)};
 canonize({int, Value}) ->
     {string, integer_to_list(Value)};
+canonize({decimal, Value}) ->
+    {string, float_to_list(Value)};
 canonize({string, []}) ->
     [];
 canonize({string, Value}) ->

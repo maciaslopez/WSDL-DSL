@@ -52,6 +52,10 @@ check_pattern(_Pat, WSDLType) ->
 check_int_pattern(_Pat, WSDLType) ->
     WSDLType.
 
+% TODO
+check_decimal_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
 convert(Pattern) ->
     Pat = preprocess_pat(Pattern),
     case erlang_regexp:parse(Pat) of
