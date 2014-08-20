@@ -142,6 +142,9 @@ whiteSpace(Kind, {Tag, Attributes, Content}) ->
 pattern(RegExp, {Tag, Attributes, Content}) ->
     {Tag, [{pattern,RegExp} | Attributes], Content}.
 
+enumeration(Enum, {Tag, Attributes, Content}) ->
+    {Tag, [{enumeration,Enum} | Attributes], Content}.
+
 minOccurs(N, {Tag, Attributes, Content}) ->
     {Tag, [{minOccurs,N} | Attributes], Content}.
 
@@ -154,6 +157,8 @@ wsdlType(WSDLType) ->
     generate(T).
 
 %%% Internal stuff: checking WSDL structure coherence
+
+% TODO: check enumeration
 
 check_constraints(L) when is_list(L) ->
     [check_constraints(E) || E <- L];
@@ -281,15 +286,18 @@ generate({int, Attributes, []}) ->
     Min = proplists:get_value(minInclusive, Attributes),
     Max = proplists:get_value(maxInclusive, Attributes),
     Pat = proplists:get_value(pattern, Attributes),
-    N = case Pat /= undefined of
-            true ->
+    Enum = proplists:get_value(enumeration, Attributes),
+    N = if
+            Enum /= undefined ->
+                oneof(Enum);
+            Pat /= undefined ->
                 ?LET(S, regexp_gen:generate(Pat),
                      try list_to_integer(lists:flatten(S))
                      catch
                          error:badarg ->
                              erlang:error("Pattern is not an integer", Pat)
                      end);
-            _ ->
+            true ->
                 choose(Min, Max)
         end,
     {int, N};
@@ -297,8 +305,14 @@ generate({int, Attributes, []}) ->
 generate({int, _, I}) when is_integer(I) ->
     {int, I};
 % TODO: attributes
-generate({decimal, _Attributes, []}) ->
-    N = real(),
+generate({decimal, Attributes, []}) ->
+    Enum = proplists:get_value(enumeration, Attributes),
+    N = if
+            Enum /= undefined ->
+                oneof(Enum);
+            true ->
+                real()
+        end,
     {decimal, N};
 generate({decimal, _, D}) when is_float(D) ->
     {decimal, D};
@@ -307,22 +321,29 @@ generate({string, Attributes, ""}) ->
     Max = proplists:get_value(maxLength, Attributes),
     WS  = proplists:get_value(whiteSpace, Attributes),
     Pat = proplists:get_value(pattern, Attributes),
+    Enum = proplists:get_value(enumeration, Attributes),
     Gen = ascii_char(),
-    ?SUCHTHAT(String,
-              ?LET(N, choose(Min,Max),
-                   {string, case Pat/=undefined of
-                                true ->
-                                    ?LET(S, regexp_gen:generate(Pat), lists:flatten(S));
-                                _ ->
-                                    escaped_string(
-                                      if N<3  -> vector(N,non_whitespace(Gen,WS));
-                                         true -> [non_whitespace(Gen,WS)] ++
-                                                     vector(N-2,non_tabcrlf(Gen,WS)) ++
-                                                     [non_whitespace(Gen,WS)]
-                                      end)
-                            end
-                   }),
-              (WS/=collapse orelse no_dupl_spaces(String)));
+    S = if
+            Enum /= undefined ->
+                oneof(Enum);
+            true ->
+                ?SUCHTHAT(String,
+                    ?LET(N, choose(Min,Max),
+                         case Pat/=undefined of
+                            true ->
+                                ?LET(S, regexp_gen:generate(Pat), lists:flatten(S));
+                            _ ->
+                                escaped_string(
+                                    if
+                                        N<3  -> vector(N,non_whitespace(Gen,WS));
+                                        true -> [non_whitespace(Gen,WS)] ++
+                                                vector(N-2,non_tabcrlf(Gen,WS)) ++
+                                                [non_whitespace(Gen,WS)]
+                                    end)
+                         end),
+                    (WS/=collapse orelse no_dupl_spaces(String)))
+        end,
+    {string, S};
 generate({string, _, S}) ->
     {string, S};
 generate({Tag, Attributes, Content}) ->
