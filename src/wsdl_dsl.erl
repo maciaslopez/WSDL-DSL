@@ -274,15 +274,26 @@ check_decimal_pattern({decimal, Attributes, _Content} = WSDLType) ->
 %% (we might want to make a generator that given a regexp, produces strings of that kind)
 generate([]) ->
     [];
+generate({Tag, Attributes, Content}) ->
+    {Min, Max, Attrs} = expand_constraints(Attributes),
+    G = generate_({Tag, Attrs, Content}),
+    case {Min, Max} of
+        {0, 0} ->
+            none;
+        {1, 1} ->
+            G;
+        _ ->
+            ?LET(N, choose(Min, Max), vector(N, G))
+    end.
 
-generate({empty, _, _}) ->
+generate_({empty, _, _}) ->
     [];
-generate({bool, _, []}) ->
+generate_({bool, _, []}) ->
     {bool, oneof([true, false])};
-generate({bool, _, B}) when B == true orelse B == false ->
+generate_({bool, _, B}) when B == true orelse B == false ->
     {bool, B};
 % FIXME: how to match patterns with other attribures
-generate({int, Attributes, []}) ->
+generate_({int, Attributes, []}) ->
     Min = proplists:get_value(minInclusive, Attributes),
     Max = proplists:get_value(maxInclusive, Attributes),
     Pat = proplists:get_value(pattern, Attributes),
@@ -302,10 +313,10 @@ generate({int, Attributes, []}) ->
         end,
     {int, N};
 % TODO: Attributes == []?
-generate({int, _, I}) when is_integer(I) ->
+generate_({int, _, I}) when is_integer(I) ->
     {int, I};
 % TODO: attributes
-generate({decimal, Attributes, []}) ->
+generate_({decimal, Attributes, []}) ->
     Enum = proplists:get_value(enumeration, Attributes),
     N = if
             Enum /= undefined ->
@@ -314,9 +325,9 @@ generate({decimal, Attributes, []}) ->
                 real()
         end,
     {decimal, N};
-generate({decimal, _, D}) when is_float(D) ->
+generate_({decimal, _, D}) when is_float(D) ->
     {decimal, D};
-generate({string, Attributes, ""}) ->
+generate_({string, Attributes, ""}) ->
     Min = proplists:get_value(minLength, Attributes),
     Max = proplists:get_value(maxLength, Attributes),
     WS  = proplists:get_value(whiteSpace, Attributes),
@@ -344,22 +355,17 @@ generate({string, Attributes, ""}) ->
                     (WS/=collapse orelse no_dupl_spaces(String)))
         end,
     {string, S};
-generate({string, _, S}) ->
+generate_({string, _, S}) ->
     {string, S};
-generate({Tag, Attributes, Content}) ->
-    {Min, Max, Attrs} = expand_constraints(Attributes),
-    V = generate_gen({Tag, Attrs, Content}),
-    ?LET(N, choose(Min, Max),
-         vector(N, V)).
-
-generate_gen({sequence, [], Content}) ->
+generate_({sequence, [], Content}) ->
     [generate(C) || C <- Content];
-generate_gen({union, [], Content}) ->
+generate_({union, [], Content}) ->
     oneof([ generate(C) || C <- Content]);
 % TODO: fix list (?MAX_BOUND..)
-generate_gen({list, [], Content}) ->
+generate_({list, [], Content}) ->
+    % min/maxBounds was already added
     generate(Content);
-generate_gen({Tag, Attrs, Content}) ->
+generate_({Tag, Attrs, Content}) ->
     % Base cases need to be wrapped in a list
     C = case Content of
             {bool,_,_}    -> [generate(Content)];
