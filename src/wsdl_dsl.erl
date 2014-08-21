@@ -280,6 +280,8 @@ generate({Tag, Attributes, Content}) ->
     case {Min, Max} of
         {0, 0} ->
             none;
+        {0, 1} ->
+            oneof([none, G]);
         {1, 1} ->
             G;
         _ ->
