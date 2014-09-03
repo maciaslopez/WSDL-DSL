@@ -38,6 +38,24 @@ xmlize({string, Value}) ->
 xmlize(Any) ->
     Any.
 
+% -type(AST | [AST] -> string())
+tuplify(L) when is_list(L) ->
+    [tuplify(E) || E <- lists:flatten(L)];
+tuplify({Tag, Attrs, C}) ->
+    {Tag, tuplify(Attrs), tuplify(C)};
+tuplify({bool, Value}) ->
+    atom_to_list(Value);
+tuplify({int, Value}) ->
+    integer_to_list(Value);
+tuplify({decimal, Value}) ->
+    float_to_list(Value);
+tuplify({string, Value}) ->
+    Value;
+tuplify({K, V}) ->
+    {tuplify(K), tuplify(V)};
+tuplify(Any) ->
+    Any.
+
 
 
 join([{T1,_}=A,{T2,_}=B|T]) ->
