@@ -177,6 +177,8 @@ check_constraints({string, _, ""} = WSDLType) ->
 % TODO: check attributes?
 check_constraints({string, _, _} = WSDLType) ->
     WSDLType;
+check_constraints({list, Attributes, Content}) ->
+    check_length({list, Attributes, check_constraints(Content)});
 check_constraints({Tag, Attributes, Content}) ->
     F = fun({K,V}) when is_tuple(V) ->
                             {K, check_constraints(V)};
@@ -188,8 +190,6 @@ check_constraints({Tag, Attributes, Content}) ->
     check_occurences(Min, Max,
                      {Tag, [ F(A) || A <- Attributes], check_constraints(Content)}).
 
-check_occurences(undefined,undefined,{list,_,_}=WSDLType) ->
-    minOccurs(0,maxOccurs(?UNBOUND_OCCURS, WSDLType));
 check_occurences(undefined,undefined,WSDLType) ->
     minOccurs(1,maxOccurs(1, WSDLType));
 check_occurences(Min,unbound,WSDLType) when is_integer(Min) ->
@@ -231,7 +231,8 @@ check_size_attributes(undefined,Min,Max,WSDLType) when is_integer(Min),
 check_size_attributes(_,_,_,WSDLType) ->
     erlang:error({conflicting_lengths,WSDLType}).
 
-check_length({string, Attributes, []} = WSDLType) ->
+check_length({Tag, Attributes, []} = WSDLType) when Tag == string orelse
+                                                    Tag == list ->
     N = proplists:get_value(length, Attributes),
     Min = proplists:get_value(minLength, Attributes),
     Max = proplists:get_value(maxLength, Attributes),
@@ -359,14 +360,15 @@ generate_({string, Attributes, ""}) ->
     {string, S};
 generate_({string, _, S}) ->
     {string, S};
+generate_({list, Attributes, Content}) ->
+    Min = proplists:get_value(minLength, Attributes),
+    Max = proplists:get_value(maxLength, Attributes),
+    G = generate_(Content),
+    ?LET(N, choose(Min, Max), {list, vector(N, G)});
 generate_({sequence, [], Content}) ->
     [generate(C) || C <- Content];
 generate_({union, [], Content}) ->
     oneof([ generate(C) || C <- Content]);
-% TODO: fix list (?MAX_BOUND..)
-generate_({list, [], Content}) ->
-    % min/maxBounds was already added
-    generate(Content);
 generate_({Tag, Attrs, Content}) ->
     % Base cases need to be wrapped in a list
     C = case Content of
@@ -480,7 +482,9 @@ canonize({decimal, Value}) ->
 canonize({string, []}) ->
     [];
 canonize({string, Value}) ->
-    {string, Value}.
+    {string, Value};
+canonize({list, Values}) ->
+    canonize(Values).
 
 join([{string,A},{string,B}|T]) ->
     join([{string, A ++ " " ++ B} | T]);
