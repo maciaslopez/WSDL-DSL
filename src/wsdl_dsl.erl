@@ -376,7 +376,7 @@ generate_({Tag, Attrs, Content}) ->
             {string,_,_}  -> [generate(Content)];
             _             ->  generate(Content)
         end,
-    {Tag, [{K,generate(V)} || {K,V} <- Attrs], C}.
+    {Tag, [{K,generate_(V)} || {K,V} <- Attrs], C}.
 
 %% Last step of generation, expand restriction attributes such as minOccuexrs, maxOccurs
 expand_constraints(Attributes) ->
