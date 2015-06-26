@@ -39,10 +39,68 @@ ascii_char_gen() ->
             [$a]).
 
 
-%% main function to build a regexp
-regexp(RegExp) ->
-    {regexp, RegExp}.
+%% main function to build a regexp from a string
+%% FIXME: we should check for incompatibilities
+from_string(Pat) ->
+    regexp(convert(Pat)).
 
+% TODO
+check_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
+% TODO
+check_int_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
+% TODO
+check_decimal_pattern(_Pat, WSDLType) ->
+    WSDLType.
+
+convert(Pattern) ->
+    Pat = preprocess_pat(Pattern),
+    case erlang_regexp:parse(Pat) of
+        {ok, ParseRes} ->
+            convert1(ParseRes);
+        {error, Reason} ->
+            erlang:error({wrong_regexp,Pattern,Reason})
+     end.
+
+
+% TODO: needed?
+preprocess_pat(Pat) ->
+    lists:flatten([case C of
+                       127 -> "[0-9]";
+                       C -> C
+                   end||C<-Pat]).
+
+convert1(Pat) when is_integer(Pat) ->
+    Pat;
+convert1({'or', E1, E2}) ->
+    branch([convert1(E1), convert1(E2)]);
+convert1({concat, E1, E2}) ->
+    concat([convert1(E1), convert1(E2)]);
+convert1({kclosure, E1}) ->
+    star(convert1(E1));
+convert1({pclosure, E1}) ->
+    plus(convert1(E1));
+convert1({char_class, Scope}) ->
+    All = [case R of
+               {S, E} -> range(S,E);
+               _ -> R
+           end||R<-Scope],
+    charClass(All);
+convert1({comp_class, E1}) ->
+    neg(convert1({char_class, E1}));
+convert1({optional,E1}) ->
+    question(convert1(E1));
+convert1({repeat, N, E}) ->
+    repeat(N, convert1(E)).
+
+
+%%
+
+regexp(Pat) ->
+    {regexp, Pat}.
 
 %% L :: list of regexps to concat
 %% Regexp: ab -> concat([$a,$b]).
@@ -178,6 +236,8 @@ subtract({charClass, L1}, {charClass, L2}) ->
     charClass([lists:subtract(L1, L2)]).
 
 
+generate({regexp, R}) ->
+    generate(R);
 generate({concat, L}) when is_list(L) ->
     [generate(X) || X <- L];
 generate({branch, L}) when is_list(L) ->
